@@ -3,8 +3,8 @@ import uuid
 from sklearn.base import BaseEstimator
 import numpy as np
 
-from src.entities.model.inference_input import InferenceInput
-from src.entities.model.ml_model import MLModel
+from src.entities.ml_model.inference_input import InferenceInput
+from src.entities.ml_model.ml_model import MLModel
 
 
 class ClassificationModel(MLModel):

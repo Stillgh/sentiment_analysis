@@ -1,7 +1,7 @@
 import datetime
 import uuid
 
-from src.entities.model.inference_input import InferenceInput
+from src.entities.ml_model.inference_input import InferenceInput
 
 
 class PredictionRequest:
