@@ -1,7 +1,7 @@
 import uuid
 
-from src.entities.task.prediction_request import PredictionRequest
-from src.entities.task.prediction_result import PredictionResult
+from app.src.entities.task.prediction_request import PredictionRequest
+from app.src.entities.task.prediction_result import PredictionResult
 
 
 class PredictionTask:

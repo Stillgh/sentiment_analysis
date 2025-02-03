@@ -1,7 +1,7 @@
 import hashlib
 import uuid
 
-from src.entities.user.user_role import UserRole
+from app.src.entities.user.user_role import UserRole
 
 
 class User:
