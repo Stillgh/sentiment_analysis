@@ -6,10 +6,10 @@ from src.entities.ml_model.inference_input import InferenceInput
 
 
 class MLModel(ABC):
-    def __init__(self, model_id: uuid, name: str, type: str, prediction_cost: float):
+    def __init__(self, model_id: uuid, name: str, model_type: str, prediction_cost: float):
         self.__model_id = model_id
         self.__name = name
-        self.__type = type
+        self.__model_type = model_type
         self.__prediction_cost = prediction_cost
 
     @property
@@ -21,8 +21,8 @@ class MLModel(ABC):
         return self.__name
 
     @property
-    def type(self) -> str:
-        return self.__type
+    def model_type(self) -> str:
+        return self.__model_type
 
     @property
     def prediction_cost(self) -> float:
@@ -32,9 +32,9 @@ class MLModel(ABC):
     def name(self, value: str):
         self.__name = value
 
-    @type.setter
-    def type(self, value: str):
-        self.__type = value
+    @model_type.setter
+    def model_type(self, value: str):
+        self.__model_type = value
 
     @prediction_cost.setter
     def prediction_cost(self, value: float):
