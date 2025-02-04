@@ -2,7 +2,7 @@ import abc
 import uuid
 from abc import ABC
 
-from src.entities.ml_model.inference_input import InferenceInput
+from app.src.entities.ml_model.inference_input import InferenceInput
 
 
 class MLModel(ABC):
