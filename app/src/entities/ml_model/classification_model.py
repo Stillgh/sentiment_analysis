@@ -1,26 +1,18 @@
-import uuid
-
+from pydantic import PrivateAttr
 from sklearn.base import BaseEstimator
 import numpy as np
 
-from app.src.entities.ml_model.inference_input import InferenceInput
-from app.src.entities.ml_model.ml_model import MLModel
+from entities.ml_model.inference_input import InferenceInput
+from entities.ml_model.ml_model import MLModel
+from sqlmodel import Field
 
 
-class ClassificationModel(MLModel):
-    def __init__(self, model_id: uuid, name: str, model: BaseEstimator, prediction_cost: float):
-        super().__init__(model_id, name, "classification", prediction_cost)
-        self.__model = model
+class ClassificationModel(MLModel, table=True):
+    __tablename__ = "ml_models"
 
-    @property
-    def model(self) -> BaseEstimator:
-        return self.__model
-
-    @model.setter
-    def model(self, model: BaseEstimator):
-        self.__model = model
+    model_type: str = Field(default="classification", const=True)
+    _model: BaseEstimator = PrivateAttr()
 
     def predict(self, data_input: InferenceInput):
         X = np.array(data_input)
         return self.__model.predict(X)
-
