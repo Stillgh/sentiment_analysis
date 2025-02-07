@@ -22,40 +22,56 @@ def get_all_models(session: Session) -> List[MLModel]:
     return session.query(ClassificationModel).all()
 
 
-def make_prediction(prediction_requests: List[PredictionRequest], model: ClassificationModel, session: Session) -> List[
-    PredictionTask]:
-    results = [PredictionResult(
+def get_default_model():
+    return ClassificationModel(name='LogisticRegression', model_type='classification', prediction_cost=100.0)
+
+
+def get_model_by_name(name: str, session: Session) -> ClassificationModel:
+    statement = select(ClassificationModel) \
+        .where(ClassificationModel.name == name)
+
+    result = session.exec(statement).first()
+    return result
+
+
+def create_default_model(session: Session):
+    model = get_default_model()
+    session.add(model)
+    session.commit()
+    session.refresh(model)
+
+
+def make_prediction(prediction_request: PredictionRequest, model: ClassificationModel,
+                    session: Session) -> PredictionTask:
+    result = PredictionResult(
         result="[1]",
         is_success=True,
         balance_withdrawal=model.prediction_cost,
         result_timestamp=datetime.now()
-    ) for _ in prediction_requests]
-    tasks = []
-    for req, res in zip(prediction_requests, results):
-        task = PredictionTask(
-            id=uuid.uuid4(),
-            user_id=req.user_id,
-            model_id=req.model_id,
-            inference_input=req.inference_input,
-            user_balance_before_task=req.user_balance_before_task,
-            request_timestamp=req.request_timestamp,
-            result=res.result,
-            is_success=res.is_success,
-            balance_withdrawal=res.balance_withdrawal,
-            result_timestamp=res.result_timestamp
-        )
-        tasks.append(task)
+    )
+
+    task = PredictionTask(
+        id=uuid.uuid4(),
+        user_id=prediction_request.user_id,
+        model_id=prediction_request.model_id,
+        inference_input=prediction_request.inference_input,
+        user_balance_before_task=prediction_request.user_balance_before_task,
+        request_timestamp=prediction_request.request_timestamp,
+        result=result.result,
+        is_success=result.is_success,
+        balance_withdrawal=result.balance_withdrawal,
+        result_timestamp=result.result_timestamp
+    )
 
     try:
-        for task in tasks:
-            session.add(task)
+        session.add(task)
         session.commit()
+        session.refresh(task)
         print("Created prediction tasks successfully!")
     except Exception as e:
         print(f"Error creating prediction tasks: {e}")
         session.rollback()
-
-    return tasks
+    return task
 
 
 def get_all_prediction_history(session: Session) -> List[PredictionTask]:
@@ -65,7 +81,7 @@ def get_all_prediction_history(session: Session) -> List[PredictionTask]:
 def get_prediction_histories_by_user(user_id: uuid.UUID, session: Session) -> List[PredictionTask]:
     statement = select(PredictionTask) \
         .where(PredictionTask.user_id == user_id) \
-        .order_by(PredictionTask.timestamp.desc())
+        .order_by(PredictionTask.request_timestamp.desc())
 
     result = session.exec(statement).all()
     return result
