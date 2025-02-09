@@ -33,14 +33,6 @@ def get_model_by_name(name: str, session: Session) -> ClassificationModel:
     result = session.exec(statement).first()
     return result
 
-
-def create_default_model(session: Session):
-    model = get_default_model()
-    session.add(model)
-    session.commit()
-    session.refresh(model)
-
-
 def make_prediction(prediction_request: PredictionRequest, model: ClassificationModel,
                     session: Session) -> PredictionTask:
     result = PredictionResult(

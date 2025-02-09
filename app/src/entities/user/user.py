@@ -1,4 +1,5 @@
 import uuid
+from typing import Union
 
 from pydantic import BaseModel, EmailStr
 from sqlmodel import SQLModel, Field
@@ -14,6 +15,7 @@ class User(SQLModel, table=True):
     hashed_password: str
     balance: float = Field(default=0.0)
     role: UserRole = Field(default='user')
+    disabled: bool = Field(default=False)
 
 
 class UserDTO(BaseModel):

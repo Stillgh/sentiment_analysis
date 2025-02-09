@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 import uvicorn
 from fastapi import FastAPI
 
-from database.database import init_db
+from database.tables_initiator import init_db
 from routes.prediction_router import prediction_router
 from routes.user_router import user_router
 from routes.home_router import home_router

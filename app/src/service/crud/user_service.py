@@ -13,7 +13,7 @@ def get_all_users(session: Session) -> List[User]:
     return session.query(User).all()
 
 
-def get_user_by_id(id: uuid.UUID, session: Session) -> List[User]:
+def get_user_by_id(id: uuid.UUID, session: Session) -> User:
     return session.get(User, id)
 
 
@@ -85,30 +85,3 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         plain_password.encode('utf-8'),
         hashed_password.encode('utf-8')
     )
-
-
-def create_admin_user(session: Session) -> None:
-    admin_email = "admin@example.com"  # You might want to get this from settings
-    
-    admin = get_user_by_email(admin_email, session)
-    if admin:
-        return
-    
-    admin = User(
-        id=uuid.uuid4(),
-        email=admin_email,
-        name="Admin",
-        surname="Admin",
-        hashed_password=hash_password("admin123"),
-        balance=100_000_000.0,
-        role=UserRole.ADMIN
-    )
-    
-    try:
-        create_user(admin, session)
-        print("Admin user created successfully")
-    except Exception as e:
-        print(f"Error creating admin user: {e}")
-        raise HTTPException(status_code=500, detail="Could not create admin user")
-
-
