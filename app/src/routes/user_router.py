@@ -63,7 +63,7 @@ async def create_new_user(user_data: UserSignUp, session: Session = Depends(get_
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@user_router.post("/{email}/balance/add")
+@user_router.post("/balance/add")
 async def add_user_balance(
         amount: float,
         current_user: Annotated[User, Depends(get_current_active_user)],
@@ -76,7 +76,7 @@ async def add_user_balance(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@user_router.post("/{email}/balance/withdraw")
+@user_router.post("/balance/withdraw")
 async def withdraw_user_balance(
         amount: float,
         current_user: Annotated[User, Depends(get_current_active_user)],
@@ -89,14 +89,14 @@ async def withdraw_user_balance(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@user_router.get("/{email}/balance/current", response_model=dict)
+@user_router.get("/balance/current", response_model=dict)
 async def get_user_current_balance(
         current_user: Annotated[User, Depends(get_current_active_user)]
 ):
     return {"message": f"User {current_user.email} balance is {current_user.balance}"}
 
 
-@user_router.get("/{email}/balance/history", response_model=List[BalanceHistory])
+@user_router.get("/balance/history", response_model=List[BalanceHistory])
 async def get_user_balance_history(
         current_user: Annotated[User, Depends(get_current_active_user)],
         session: Session = Depends(get_session)
@@ -104,7 +104,7 @@ async def get_user_balance_history(
     return get_balance_histories(current_user.id, session)
 
 
-@user_router.get("/{email}/predictions", response_model=List[PredictionTask])
+@user_router.get("/predictions", response_model=List[PredictionTask])
 async def get_user_prediction_history(
         current_user: Annotated[User, Depends(get_current_active_user)],
         session: Session = Depends(get_session)
