@@ -1,8 +1,10 @@
 import uuid
 from typing import List
-
+import bcrypt
 from entities.user.user import User
 from sqlmodel import Session, select
+from fastapi import HTTPException
+from entities.user.user_role import UserRole
 
 from entities.user.balance_history import BalanceHistory
 
@@ -11,8 +13,14 @@ def get_all_users(session: Session) -> List[User]:
     return session.query(User).all()
 
 
-def get_user_by_id(id: uuid.UUID, session: Session) -> List[User]:
+def get_user_by_id(id: uuid.UUID, session: Session) -> User:
     return session.get(User, id)
+
+
+def get_user_by_email(email: str, session: Session) -> User:
+    statement = select(User).where(User.email == email)
+    user = session.exec(statement).first()
+    return user
 
 
 def create_user(new_user: User, session: Session) -> None:
@@ -21,15 +29,15 @@ def create_user(new_user: User, session: Session) -> None:
     session.refresh(new_user)
 
 
-def add_balance(user_id: uuid.UUID, amount: float, session: Session) -> None:
+def add_balance(email: str, amount: float, session: Session) -> None:
     if amount <= 0:
         raise Exception("Amount must be positive")
 
-    user = session.get(User, user_id)
+    user = get_user_by_email(email, session)
     if not user:
         raise Exception("User not found")
 
-    balance_history = BalanceHistory(user_id=user_id, amount_before_change=user.balance, amount_change=amount)
+    balance_history = BalanceHistory(user_id=user.id, amount_before_change=user.balance, amount_change=amount)
 
     user.balance += amount
     session.add(balance_history)
@@ -37,18 +45,18 @@ def add_balance(user_id: uuid.UUID, amount: float, session: Session) -> None:
     session.refresh(user)
 
 
-def withdraw_balance(user_id: uuid.UUID, amount: float, session: Session) -> None:
+def withdraw_balance(email: str, amount: float, session: Session) -> None:
     if amount <= 0:
         raise Exception("Amount must be positive")
 
-    user = session.get(User, user_id)
+    user = get_user_by_email(email, session)
     if not user:
         raise Exception("User not found")
 
     if user.balance < amount:
         raise Exception("Insufficient balance")
 
-    balance_history = BalanceHistory(user_id=user_id, amount_before_change=user.balance, amount_change=-amount)
+    balance_history = BalanceHistory(user_id=user.id, amount_before_change=user.balance, amount_change=-amount)
 
     user.balance -= amount
     session.add(balance_history)
@@ -57,9 +65,23 @@ def withdraw_balance(user_id: uuid.UUID, amount: float, session: Session) -> Non
 
 
 def get_balance_histories(user_id: uuid.UUID, session: Session) -> List[BalanceHistory]:
+
     statement = select(BalanceHistory) \
         .where(BalanceHistory.user_id == user_id) \
         .order_by(BalanceHistory.timestamp.desc())
 
     result = session.exec(statement).all()
     return result
+
+
+def hash_password(password: str) -> str:
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed.decode('utf-8')
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return bcrypt.checkpw(
+        plain_password.encode('utf-8'),
+        hashed_password.encode('utf-8')
+    )
