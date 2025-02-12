@@ -33,6 +33,38 @@ def get_model_by_name(name: str, session: Session) -> ClassificationModel:
     result = session.exec(statement).first()
     return result
 
+
+def save_failed_task(prediction_request: PredictionRequest, error_mes: str, session: Session):
+    result = PredictionResult(
+        result=error_mes,
+        is_success=False,
+        balance_withdrawal=0,
+        result_timestamp=datetime.now()
+    )
+    task = PredictionTask(
+        id=uuid.uuid4(),
+        user_id=prediction_request.user_id,
+        model_id=prediction_request.model_id,
+        inference_input=prediction_request.inference_input,
+        user_balance_before_task=prediction_request.user_balance_before_task,
+        request_timestamp=prediction_request.request_timestamp,
+        result=result.result,
+        is_success=result.is_success,
+        balance_withdrawal=result.balance_withdrawal,
+        result_timestamp=result.result_timestamp
+    )
+
+    try:
+        session.add(task)
+        session.commit()
+        session.refresh(task)
+        print("Saved failed prediction task")
+    except Exception as e:
+        print(f"Error creating prediction tasks: {e}")
+        session.rollback()
+    return task
+
+
 def make_prediction(prediction_request: PredictionRequest, model: ClassificationModel,
                     session: Session) -> PredictionTask:
     result = PredictionResult(

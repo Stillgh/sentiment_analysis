@@ -12,6 +12,36 @@ services:
       db:
         condition: service_healthy
 
+  celery-validation-worker:
+    build: ./app/
+    working_dir: /app/src
+    image: ml-service-app:0.1
+    command: celery -A celery_worker.celery worker --loglevel=info --logfile=logs/celery.log -Q validation
+    env_file:
+      - ./app/.env
+    volumes:
+      - ./app:/app
+    depends_on:
+      - app
+      - rabbitmq
+    deploy:
+      replicas: 2
+
+  celery-prediction-worker:
+    build: ./app/
+    working_dir: /app/src
+    image: ml-service-app:0.1
+    command: celery -A celery_worker.celery worker --loglevel=info --logfile=logs/celery.log -Q prediction
+    env_file:
+      - ./app/.env
+    volumes:
+      - ./app:/app
+    depends_on:
+      - app
+      - rabbitmq
+    deploy:
+      replicas: 3
+
   web-proxy:
     image: nginx:1.25-alpine
     ports:

@@ -76,4 +76,4 @@ async def get_current_active_user(
         raise HTTPException(status_code=404, detail="User not found")
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
-    return user_to_user_dto(current_user)
+    return current_user
