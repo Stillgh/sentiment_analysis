@@ -19,7 +19,7 @@ from service.crud.user_service import withdraw_balance
 from service.mappers.prediction_mapper import prediction_task_to_dto
 
 prediction_router = APIRouter(prefix="/prediction", tags=["Prediction"])
-custom_executor = ThreadPoolExecutor(max_workers=20)  # adjust the number as needed
+custom_executor = ThreadPoolExecutor(max_workers=20)
 
 
 @prediction_router.post("/predict", response_model=PredictionDTO)
