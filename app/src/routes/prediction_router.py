@@ -1,34 +1,35 @@
-import asyncio
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Annotated, List
-from celery.exceptions import TimeoutError as CeleryTimeoutError
 
-from celery import chain
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
-from celery_worker import validate_request, perform_prediction
+from celery_worker import perform_prediction
 from database.database import get_session
 from entities.task.prediction_request import PredictionRequest
-from entities.task.prediction_task import PredictionDTO, PredictionTask
+from entities.task.prediction_task import PredictionTask, PredictionDTO
 from entities.user.user import User
 from service.auth.auth_service import get_current_active_user
-from service.crud.model_service import get_model_by_name, get_default_model, get_all_prediction_history
-from service.crud.user_service import withdraw_balance
+from service.crud.model_service import get_model_by_name, get_default_model, get_all_prediction_history, validate_input, \
+    get_prediction_task_by_id, get_model_by_id
 from service.mappers.prediction_mapper import prediction_task_to_dto
 
 prediction_router = APIRouter(prefix="/prediction", tags=["Prediction"])
 custom_executor = ThreadPoolExecutor(max_workers=20)
 
 
-@prediction_router.post("/predict", response_model=PredictionDTO)
+@prediction_router.post("/predict")
 async def create_prediction(
         inference_input: str,
         current_user: Annotated[User, Depends(get_current_active_user)],
         model_name: str | None = None,
         session: Session = Depends(get_session)
 ):
+    if not validate_input(inference_input):
+        raise HTTPException(status_code=400, detail="Input len should be > 2")
+
     model = get_model_by_name(model_name, session) if model_name else get_default_model()
     if not model:
         raise HTTPException(status_code=404, detail="Model not found")
@@ -46,33 +47,25 @@ async def create_prediction(
         user_balance_before_task=current_user.balance,
         request_timestamp=datetime.now()
     )
-
-    task_chain = chain(
-        validate_request.s(prediction_request.dict()),
-        perform_prediction.s(model.name)
-    )
-
-    async_result = task_chain()
-
-    loop = asyncio.get_running_loop()
+    task_id = uuid.uuid4()
     try:
-        result = await loop.run_in_executor(custom_executor, async_result.get, 10)
-    except CeleryTimeoutError:
-        raise HTTPException(
-            status_code=202,
-            detail=f"Task is still processing. You can retrieve the result later calling /prediction/all."
-        )
+        perform_prediction.delay(prediction_request.dict(), task_id, model.name)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Task error: {exc}")
 
-    if "error" in result:
-        raise HTTPException(status_code=400, detail=result["error"])
+    return f"Task is running, task id is {task_id}. Check result at /prediction_result"
 
-    result = PredictionTask(**result)
-    if result.is_success:
-        withdraw_balance(current_user.email, model.prediction_cost, session)
-        print('Balance withdrawed')
-    return prediction_task_to_dto(result, current_user.email, model_name)
+
+@prediction_router.post("/prediction_result", response_model=PredictionDTO)
+async def create_prediction(
+        task_id: uuid.UUID,
+        current_user: Annotated[User, Depends(get_current_active_user)],
+        session: Session = Depends(get_session)
+):
+    task = get_prediction_task_by_id(task_id, session)
+    if not task:
+        return f"Task with id: {task_id} is not ready yet"
+    return prediction_task_to_dto(task, current_user.email, get_model_by_id(task.model_id, session).name)
 
 
 @prediction_router.get("/all", response_model=List[PredictionTask])

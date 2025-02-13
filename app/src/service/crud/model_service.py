@@ -4,6 +4,8 @@ from typing import List
 
 from sqlmodel import Session, select
 
+from database.database import get_session
+from entities.ml_model.inference_input import InferenceInput
 from entities.task.prediction_request import PredictionRequest
 from entities.task.prediction_result import PredictionResult
 from entities.task.prediction_task import PredictionTask
@@ -22,6 +24,12 @@ def get_all_models(session: Session) -> List[MLModel]:
     return session.query(ClassificationModel).all()
 
 
+def get_model_by_id(id: uuid, session: Session) -> ClassificationModel:
+    statement = select(ClassificationModel).where(ClassificationModel.id == id)
+    result = session.exec(statement).first()
+    return result
+
+
 def get_default_model():
     return ClassificationModel(name='LogisticRegression', model_type='classification', prediction_cost=100.0)
 
@@ -34,59 +42,37 @@ def get_model_by_name(name: str, session: Session) -> ClassificationModel:
     return result
 
 
-def save_failed_task(prediction_request: PredictionRequest, error_mes: str, session: Session):
-    result = PredictionResult(
-        result=error_mes,
-        is_success=False,
-        balance_withdrawal=0,
+def make_prediction(model: ClassificationModel, inference_input: InferenceInput) -> str:
+    return "positive" if len(inference_input.data) > 5 else "neutral"
+    # return model.predict(inference_input)
+
+
+def prepare_and_save_task(request: PredictionRequest, result: str, is_success: bool, cost: float,
+                          task_id: uuid) -> PredictionTask:
+    pred_result = PredictionResult(
+        result=result,
+        is_success=is_success,
+        balance_withdrawal=cost,
         result_timestamp=datetime.now()
     )
-    task = PredictionTask(
-        id=uuid.uuid4(),
-        user_id=prediction_request.user_id,
-        model_id=prediction_request.model_id,
-        inference_input=prediction_request.inference_input,
-        user_balance_before_task=prediction_request.user_balance_before_task,
-        request_timestamp=prediction_request.request_timestamp,
-        result=result.result,
-        is_success=result.is_success,
-        balance_withdrawal=result.balance_withdrawal,
-        result_timestamp=result.result_timestamp
-    )
 
-    try:
-        session.add(task)
-        session.commit()
-        session.refresh(task)
-        print("Saved failed prediction task")
-    except Exception as e:
-        print(f"Error creating prediction tasks: {e}")
-        session.rollback()
+    task = PredictionTask(
+        id=task_id,
+        user_id=request.user_id,
+        model_id=request.model_id,
+        inference_input=request.inference_input,
+        user_balance_before_task=request.user_balance_before_task,
+        request_timestamp=request.request_timestamp,
+        result=pred_result.result,
+        is_success=pred_result.is_success,
+        balance_withdrawal=pred_result.balance_withdrawal,
+        result_timestamp=pred_result.result_timestamp
+    )
+    task = save_task(task, next(get_session()))
     return task
 
 
-def make_prediction(prediction_request: PredictionRequest, model: ClassificationModel,
-                    session: Session) -> PredictionTask:
-    result = PredictionResult(
-        result="[1]",
-        is_success=True,
-        balance_withdrawal=model.prediction_cost,
-        result_timestamp=datetime.now()
-    )
-
-    task = PredictionTask(
-        id=uuid.uuid4(),
-        user_id=prediction_request.user_id,
-        model_id=prediction_request.model_id,
-        inference_input=prediction_request.inference_input,
-        user_balance_before_task=prediction_request.user_balance_before_task,
-        request_timestamp=prediction_request.request_timestamp,
-        result=result.result,
-        is_success=result.is_success,
-        balance_withdrawal=result.balance_withdrawal,
-        result_timestamp=result.result_timestamp
-    )
-
+def save_task(task: PredictionTask, session: Session) -> PredictionTask:
     try:
         session.add(task)
         session.commit()
@@ -100,6 +86,12 @@ def make_prediction(prediction_request: PredictionRequest, model: Classification
 
 def get_all_prediction_history(session: Session) -> List[PredictionTask]:
     return session.query(PredictionTask).all()
+
+
+def get_prediction_task_by_id(task_id: uuid, session: Session) -> PredictionTask:
+    statement = select(PredictionTask).where(PredictionTask.id == task_id)
+    result = session.exec(statement).first()
+    return result
 
 
 def get_prediction_histories_by_user(user_id: uuid.UUID, session: Session) -> List[PredictionTask]:
@@ -118,3 +110,7 @@ def get_prediction_histories_by_model(model_id: uuid.UUID, session: Session) -> 
 
     result = session.exec(statement).all()
     return result
+
+
+def validate_input(inference_input: str) -> bool:
+    return inference_input and len(inference_input) > 2
