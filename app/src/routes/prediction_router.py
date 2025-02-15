@@ -53,7 +53,7 @@ async def create_prediction(
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Task error: {exc}")
 
-    return f"Task is running, task id is {task_id}. Check result at /prediction_result"
+    return {"task_id": task_id}
 
 
 @prediction_router.post("/prediction_result", response_model=PredictionDTO)
