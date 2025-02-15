@@ -14,5 +14,5 @@ class ClassificationModel(MLModel, table=True):
     _model: BaseEstimator = PrivateAttr()
 
     def predict(self, data_input: InferenceInput):
-        X = np.array(data_input)
-        return self.__model.predict(X)
+        X = np.array(data_input.data)
+        return self._model.predict(X)
