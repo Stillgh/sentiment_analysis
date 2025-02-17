@@ -17,3 +17,5 @@ pyjwt==2.10.1
 passlib==1.7.4
 celery==5.4.0
 pyamqp==0.1.0.7
+Jinja2==3.1.5
+python-multipart==0.0.20

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Panel - My Site{% endblock %}
+
+{% block content %}
+  <div class="admin-container">
+    <h2>Admin Panel</h2>
+    <p>Welcome, admin! Use the options below to manage the site.</p>
+    <div class="admin-buttons">
+      <a href="/admin/users" class="btn">Show All Users</a>
+    </div>
+    <a href="/home" class="btn">Return Home</a>
+  </div>
+{% endblock %}
+
+<style>
+  .admin-container {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    text-align: center;
+  }
+  .admin-container h2 {
+    margin-bottom: 1rem;
+  }
+  .admin-buttons {
+    margin: 1.5rem 0;
+  }
+  .admin-buttons .btn {
+    margin: 0 0.5rem;
+  }
+</style>

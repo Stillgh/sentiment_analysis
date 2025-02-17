@@ -8,7 +8,7 @@ from fastapi import HTTPException
 from entities.user.user import User
 from entities.user.user_role import UserRole
 from service.auth.auth_service import get_password_hash
-from service.crud.model_service import get_default_model
+from service.crud.model_service import create_and_save_default_model
 from service.crud.user_service import get_user_by_email, create_user
 
 
@@ -38,7 +38,7 @@ def create_admin_user(session: Session) -> None:
 
 
 def create_default_model(session: Session):
-    model = get_default_model()
+    model = create_and_save_default_model()
     session.add(model)
     session.commit()
     session.refresh(model)
