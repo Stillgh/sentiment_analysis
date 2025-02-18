@@ -1,10 +1,10 @@
 import uuid
 from typing import List
 import bcrypt
+from fastapi import HTTPException
+
 from entities.user.user import User
 from sqlmodel import Session, select
-from fastapi import HTTPException
-from entities.user.user_role import UserRole
 
 from entities.user.balance_history import BalanceHistory
 
@@ -45,16 +45,16 @@ def add_balance(email: str, amount: float, session: Session) -> None:
     session.refresh(user)
 
 
-def withdraw_balance(email: str, amount: float, session: Session) -> None:
+def withdraw_balance(user_id: uuid.UUID, amount: float, session: Session) -> None:
     if amount <= 0:
         raise Exception("Amount must be positive")
 
-    user = get_user_by_email(email, session)
+    user = get_user_by_id(user_id, session)
     if not user:
-        raise Exception("User not found")
+        raise HTTPException(status_code=404, detail=str("User not found"))
 
     if user.balance < amount:
-        raise Exception("Insufficient balance")
+        raise HTTPException(status_code=400, detail=str("Insufficient balance"))
 
     balance_history = BalanceHistory(user_id=user.id, amount_before_change=user.balance, amount_change=-amount)
 
@@ -85,3 +85,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         plain_password.encode('utf-8'),
         hashed_password.encode('utf-8')
     )
+
+
+def find_and_verify_user(email: str, password: str, session: Session) -> User:
+    user = get_user_by_email(email, session)
+    if not user or not verify_password(password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    return user

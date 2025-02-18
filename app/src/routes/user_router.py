@@ -1,121 +1,148 @@
-from datetime import timedelta
-
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Form, Body
+from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import EmailStr
 from sqlmodel import Session
-from typing import List, Annotated
+from typing import Annotated
+
+from starlette import status
+from starlette.requests import Request
+from starlette.responses import RedirectResponse, HTMLResponse
 
 from config.auth_config import get_auth_settings
 from database.database import get_session
-from entities.auth.auth_entities import Token, TokenData
-from entities.task.prediction_task import PredictionTask
-from entities.user.user import User, UserSignUp, UserLogin, UserDTO
-from entities.user.balance_history import BalanceHistory
-from service.auth.auth_service import create_access_token, get_current_active_user, verify_token
-from service.crud.model_service import get_prediction_histories_by_user
+from entities.auth.auth_entities import TokenData, settings
+from entities.user.user import UserSignUp, UserDTO
+from routes.home_router import templates
+from service.auth.auth_service import get_current_active_user, authenticate_cookie
+from service.auth.jwt_service import create_access_token
 from service.crud.user_service import (
-    get_all_users,
     create_user,
     add_balance,
     withdraw_balance,
-    get_balance_histories, get_user_by_email, verify_password
+    get_balance_histories, get_user_by_email, find_and_verify_user
 )
-from service.mappers.user_mapper import user_to_user_dto, user_signup_dto_to_user
+from service.mappers.user_mapper import user_signup_dto_to_user
 
 user_router = APIRouter(prefix="/users", tags=["User"])
 auth_config = get_auth_settings()
 
 
-@user_router.get("/all", response_model=List[UserDTO])
-async def get_users(
-        current_user: Annotated[User, Depends(get_current_active_user)],
-        session: Session = Depends(get_session)):
-    return map(user_to_user_dto, get_all_users(session))
-
-
 @user_router.post("/login")
 async def login_for_access_token(
-        user_login: UserLogin,
+        user_login: OAuth2PasswordRequestForm = Depends(),
         session: Session = Depends(get_session)
-) -> Token:
-    user = get_user_by_email(user_login.email, session)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    if not verify_password(user_login.password, user.hashed_password):
-        raise HTTPException(status_code=409, detail="Password mismatch")
-
-    access_token_expires = timedelta(minutes=auth_config.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": str(user.id)}, secret_key=auth_config.SECRET_KEY, algorithm=auth_config.ALGORITHM,
-        expires_delta=access_token_expires
+) -> RedirectResponse:
+    user = find_and_verify_user(user_login.username, user_login.password, session)
+    response = RedirectResponse(url="/home", status_code=status.HTTP_302_FOUND)
+    response.set_cookie(
+        key=settings.COOKIE_NAME,
+        value=f"Bearer {create_access_token(user)}",
+        httponly=True
     )
-    return Token(access_token=access_token, token_type="bearer")
+
+    return response
+
+
+@user_router.post("/token")
+async def get_token(
+        user_login: OAuth2PasswordRequestForm = Depends(),
+        session: Session = Depends(get_session)
+) -> dict:
+    user = find_and_verify_user(user_login.username, user_login.password, session)
+
+    return {settings.COOKIE_NAME: create_access_token(user), "token_type": "bearer"}
 
 
 @user_router.post("/signup")
-async def create_new_user(user_data: UserSignUp, session: Session = Depends(get_session)) -> dict:
+async def create_new_user(
+        username: str = Form(...),
+        surname: str = Form(...),
+        email: EmailStr = Form(...),
+        password: str = Form(...),
+        session: Session = Depends(get_session)) -> RedirectResponse:
+    user_data = UserSignUp(name=username, surname=surname, email=email, password=password)
     user = get_user_by_email(user_data.email, session)
     if user:
         raise HTTPException(status_code=409, detail=f"User with email {user_data.email}  already exists")
     try:
-        create_user(user_signup_dto_to_user(user_data), session)
-        return {"message": "User successfully registered!"}
+        user = user_signup_dto_to_user(user_data)
+        create_user(user, session)
+        response = RedirectResponse(url="/home", status_code=status.HTTP_302_FOUND)
+
+        response.set_cookie(
+            key=settings.COOKIE_NAME,
+            value=f"Bearer {create_access_token(user)}",
+            httponly=True
+        )
+        return response
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @user_router.post("/balance/add")
 async def add_user_balance(
-        amount: float,
-        current_user: Annotated[User, Depends(get_current_active_user)],
-        session: Session = Depends(get_session)
+        token: Annotated[TokenData, Depends(authenticate_cookie)],
+        session: Session = Depends(get_session),
+        amount: float = Body(..., embed=True)
 ) -> dict:
     try:
-        add_balance(current_user.email, amount, session)
-        return {"message": f"Successfully added {amount} to balance for user {current_user.email}"}
+        user = await get_current_active_user(token, session)
+
+        add_balance(user.email, amount, session)
+
+        return {
+            "message": f"Successfully added {amount} to balance for user {user.email}",
+            "new_balance": float(user.balance)  # ensure it's a float
+        }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @user_router.post("/balance/withdraw")
 async def withdraw_user_balance(
-        amount: float,
-        current_user: Annotated[User, Depends(get_current_active_user)],
-        session: Session = Depends(get_session)
+        token: Annotated[TokenData, Depends(authenticate_cookie)],
+        session: Session = Depends(get_session),
+        amount: float = Body(..., embed=True)
 ):
     try:
-        withdraw_balance(current_user.email, amount, session)
-        return {"message": f"Successfully withdrew {amount} from balance for user {current_user.email}"}
+        user = await get_current_active_user(token, session)
+        withdraw_balance(user.id, amount, session)
+        return {
+            "message": f"Successfully withdrew {amount} from balance for user {user.email}",
+            "new_balance": float(user.balance)
+        }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@user_router.get("/balance/current", response_model=dict)
+@user_router.get("/balance/current", response_model=float)
 async def get_user_current_balance(
-        current_user: Annotated[User, Depends(get_current_active_user)]
-):
-    return {"message": f"User {current_user.email} balance is {current_user.balance}"}
-
-
-@user_router.get("/balance/history", response_model=List[BalanceHistory])
-async def get_user_balance_history(
-        current_user: Annotated[User, Depends(get_current_active_user)],
+        token: Annotated[TokenData, Depends(authenticate_cookie)],
         session: Session = Depends(get_session)
 ):
-    return get_balance_histories(current_user.id, session)
+    user = await get_current_active_user(token, session)
+
+    return user.balance
 
 
-@user_router.get("/predictions", response_model=List[PredictionTask])
-async def get_user_prediction_history(
-        current_user: Annotated[User, Depends(get_current_active_user)],
+@user_router.get("/balance/history", response_class=HTMLResponse)
+async def balance_history(
+        request: Request,
+        token: Annotated[TokenData, Depends(authenticate_cookie)],
         session: Session = Depends(get_session)
 ):
-
-    predictions = get_prediction_histories_by_user(current_user.id, session)
-    return predictions
+    user = await get_current_active_user(token, session)
+    history = get_balance_histories(user.id, session)
+    return templates.TemplateResponse("balance_history.html", {"request": request, "history": history})
 
 
 @user_router.get("/myinfo", response_model=UserDTO)
 async def my_info(
-        current_user: Annotated[User, Depends(get_current_active_user)],
+        request: Request,
+        token: Annotated[TokenData, Depends(authenticate_cookie)],
+        session: Session = Depends(get_session)
 ):
-    return current_user
+    user = await get_current_active_user(token, session)
+    return templates.TemplateResponse("myinfo.html", {"request": request, "user": user})
+
+

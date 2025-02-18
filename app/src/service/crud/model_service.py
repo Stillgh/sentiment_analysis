@@ -30,8 +30,12 @@ def get_model_by_id(id: uuid, session: Session) -> ClassificationModel:
     return result
 
 
-def get_default_model():
+def create_and_save_default_model():
     return ClassificationModel(name='LogisticRegression', model_type='classification', prediction_cost=100.0)
+
+
+def get_default_model(session: Session):
+    return get_model_by_name('LogisticRegression', session)
 
 
 def get_model_by_name(name: str, session: Session) -> ClassificationModel:
@@ -43,7 +47,7 @@ def get_model_by_name(name: str, session: Session) -> ClassificationModel:
 
 
 def make_prediction(model: ClassificationModel, inference_input: InferenceInput) -> str:
-    return "positive" if len(inference_input.data) > 5 else "neutral"
+    return "positive" if len(inference_input.data) > 10 else "neutral"
     # return model.predict(inference_input)
 
 
@@ -113,4 +117,4 @@ def get_prediction_histories_by_model(model_id: uuid.UUID, session: Session) -> 
 
 
 def validate_input(inference_input: str) -> bool:
-    return inference_input and len(inference_input) > 2
+    return inference_input and len(inference_input) > 5
