@@ -1,5 +1,5 @@
+from functools import lru_cache
 from sqlmodel import create_engine, Session
-
 from config.db_config import get_settings
 
 
@@ -13,14 +13,9 @@ def create_db_engine():
     )
 
 
-_engine = None
-
-
+@lru_cache(maxsize=1)
 def get_engine():
-    global _engine
-    if _engine is None:
-        _engine = create_db_engine()
-    return _engine
+    return create_db_engine()
 
 
 def get_session():
