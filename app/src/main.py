@@ -7,9 +7,9 @@ from fastapi import FastAPI
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
 
+from config.auth_config import get_auth_settings
 from database.database import get_session
 from database.tables_initiator import init_db
-from entities.auth.auth_entities import settings
 from routes.admin_router import admin_router
 from routes.prediction_router import prediction_router
 from routes.user_router import user_router
@@ -32,7 +32,8 @@ ALLOWED_PATHS = ["/", "/login", "/signup", "/users/signup", "/users/login"]
 @app.middleware("http")
 async def restrict_access_middleware(request: Request, call_next):
     if request.url.path not in ALLOWED_PATHS:
-        token = request.cookies.get(settings.COOKIE_NAME)
+        auth_settings = get_auth_settings()
+        token = request.cookies.get(auth_settings.COOKIE_NAME)
         try:
             if not token:
                 return RedirectResponse(url="/")
@@ -40,11 +41,11 @@ async def restrict_access_middleware(request: Request, call_next):
             user = await get_current_active_user(token_data, next(get_session()))
             if not user:
                 response = RedirectResponse(url="/")
-                response.delete_cookie(key=settings.COOKIE_NAME)
+                response.delete_cookie(key=auth_settings.COOKIE_NAME)
                 return response
         except Exception as e:
             response = RedirectResponse(url="/")
-            response.delete_cookie(key=settings.COOKIE_NAME)
+            response.delete_cookie(key=auth_settings.COOKIE_NAME)
             return response
     response = await call_next(request)
     return response

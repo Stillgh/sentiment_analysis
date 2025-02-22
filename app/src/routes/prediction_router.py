@@ -1,7 +1,7 @@
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-from typing import Annotated, List
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlmodel import Session
@@ -13,10 +13,10 @@ from celery_worker import perform_prediction
 from database.database import get_session
 from entities.auth.auth_entities import TokenData
 from entities.task.prediction_request import PredictionRequest
-from entities.task.prediction_task import PredictionTask, PredictionDTO
+from entities.task.prediction_task import PredictionDTO
 from routes.home_router import templates
 from service.auth.auth_service import get_current_active_user, authenticate_cookie
-from service.crud.model_service import get_model_by_name, get_default_model, get_all_prediction_history, validate_input, \
+from service.crud.model_service import get_model_by_name, get_default_model, validate_input, \
     get_prediction_task_by_id, get_model_by_id, get_prediction_histories_by_user
 from service.mappers.prediction_mapper import prediction_task_to_dto
 
@@ -34,7 +34,6 @@ async def create_prediction(
 ):
     if not validate_input(inference_input):
         raise HTTPException(status_code=400, detail="Input len should be > 5")
-
     model = get_model_by_name(model_name, session) if model_name else get_default_model(session)
     if not model:
         model = get_default_model(session)
@@ -45,7 +44,6 @@ async def create_prediction(
             status_code=400,
             detail=f"Insufficient balance. Required: {model.prediction_cost}, Available: {user.balance}"
         )
-
     prediction_request = PredictionRequest(
         user_id=user.id,
         model_id=model.id,
@@ -55,10 +53,13 @@ async def create_prediction(
     )
     task_id = uuid.uuid4()
     try:
-        perform_prediction.delay(prediction_request.dict(), task_id, model.name)
+        perform_prediction.apply_async(
+            args=[prediction_request.dict(), task_id, model.name],
+            task_id=str(task_id),
+            queue="prediction"
+        )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Task error: {exc}")
-
     return {"task_id": task_id}
 
 
@@ -91,10 +92,3 @@ async def show_prediction_history(
         for task in predictions
     ]
     return templates.TemplateResponse("prediction_history.html", {"request": request, "predictions": prediction_dtos})
-
-
-@prediction_router.get("/all", response_model=List[PredictionTask])
-async def get_prediction_history(
-        session: Session = Depends(get_session)
-):
-    return get_all_prediction_history(session)

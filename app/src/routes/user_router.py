@@ -10,7 +10,7 @@ from starlette.responses import RedirectResponse, HTMLResponse
 
 from config.auth_config import get_auth_settings
 from database.database import get_session
-from entities.auth.auth_entities import TokenData, settings
+from entities.auth.auth_entities import TokenData
 from entities.user.user import UserSignUp, UserDTO
 from routes.home_router import templates
 from service.auth.auth_service import get_current_active_user, authenticate_cookie
@@ -24,7 +24,6 @@ from service.crud.user_service import (
 from service.mappers.user_mapper import user_signup_dto_to_user
 
 user_router = APIRouter(prefix="/users", tags=["User"])
-auth_config = get_auth_settings()
 
 
 @user_router.post("/login")
@@ -32,14 +31,14 @@ async def login_for_access_token(
         user_login: OAuth2PasswordRequestForm = Depends(),
         session: Session = Depends(get_session)
 ) -> RedirectResponse:
+    auth_settings = get_auth_settings()
     user = find_and_verify_user(user_login.username, user_login.password, session)
     response = RedirectResponse(url="/home", status_code=status.HTTP_302_FOUND)
     response.set_cookie(
-        key=settings.COOKIE_NAME,
+        key=auth_settings.COOKIE_NAME,
         value=f"Bearer {create_access_token(user)}",
         httponly=True
     )
-
     return response
 
 
@@ -48,9 +47,10 @@ async def get_token(
         user_login: OAuth2PasswordRequestForm = Depends(),
         session: Session = Depends(get_session)
 ) -> dict:
+    auth_settings = get_auth_settings()
     user = find_and_verify_user(user_login.username, user_login.password, session)
 
-    return {settings.COOKIE_NAME: create_access_token(user), "token_type": "bearer"}
+    return {auth_settings.COOKIE_NAME: create_access_token(user), "token_type": "bearer"}
 
 
 @user_router.post("/signup")
@@ -62,6 +62,7 @@ async def create_new_user(
         session: Session = Depends(get_session)) -> RedirectResponse:
     user_data = UserSignUp(name=username, surname=surname, email=email, password=password)
     user = get_user_by_email(user_data.email, session)
+    auth_settings = get_auth_settings()
     if user:
         raise HTTPException(status_code=409, detail=f"User with email {user_data.email}  already exists")
     try:
@@ -70,7 +71,7 @@ async def create_new_user(
         response = RedirectResponse(url="/home", status_code=status.HTTP_302_FOUND)
 
         response.set_cookie(
-            key=settings.COOKIE_NAME,
+            key=auth_settings.COOKIE_NAME,
             value=f"Bearer {create_access_token(user)}",
             httponly=True
         )
@@ -87,12 +88,10 @@ async def add_user_balance(
 ) -> dict:
     try:
         user = await get_current_active_user(token, session)
-
         add_balance(user.email, amount, session)
-
         return {
             "message": f"Successfully added {amount} to balance for user {user.email}",
-            "new_balance": float(user.balance)  # ensure it's a float
+            "new_balance": float(user.balance)
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
