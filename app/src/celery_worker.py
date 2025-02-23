@@ -23,13 +23,13 @@ def perform_prediction(prediction_request: dict, task_id: uuid, model_name: str)
 
     try:
         result = make_prediction(model, InferenceInput(prediction_request['inference_input']))
-        prepare_and_save_task(PredictionRequest(**prediction_request), result, True, model.prediction_cost, task_id)
+        prepare_and_save_task(PredictionRequest(**prediction_request), result, True, model.prediction_cost, task_id, next(get_session()))
         withdraw_balance(prediction_request['user_id'], model.prediction_cost, next(get_session()))
-        print("Prediction succeeded")
+        return "Prediction succeeded"
 
     except Exception as exc:
         error_mes = f"Error during model prediction {exc}"
-        prepare_and_save_task(PredictionRequest(**prediction_request), error_mes, False, 0, task_id)
+        prepare_and_save_task(PredictionRequest(**prediction_request), error_mes, False, 0, task_id, next(get_session()))
         raise ModelException(error_mes, 500)
 
 

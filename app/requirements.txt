@@ -19,3 +19,8 @@ celery==5.4.0
 pyamqp==0.1.0.7
 Jinja2==3.1.5
 python-multipart==0.0.20
+pytest==8.3.4
+httpx==0.28.1
+psycopg==3.2.4
+psycopg-binary==3.2.4
+kombu==5.5.0rc3

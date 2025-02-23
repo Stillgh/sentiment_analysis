@@ -2,9 +2,8 @@ from datetime import datetime
 import uuid
 from typing import List
 
-from sqlmodel import Session, select
+from sqlmodel import Session, select, delete
 
-from database.database import get_session
 from entities.ml_model.inference_input import InferenceInput
 from entities.task.prediction_request import PredictionRequest
 from entities.task.prediction_result import PredictionResult
@@ -52,7 +51,7 @@ def make_prediction(model: ClassificationModel, inference_input: InferenceInput)
 
 
 def prepare_and_save_task(request: PredictionRequest, result: str, is_success: bool, cost: float,
-                          task_id: uuid) -> PredictionTask:
+                          task_id: uuid, session: Session) -> PredictionTask:
     pred_result = PredictionResult(
         result=result,
         is_success=is_success,
@@ -72,7 +71,7 @@ def prepare_and_save_task(request: PredictionRequest, result: str, is_success: b
         balance_withdrawal=pred_result.balance_withdrawal,
         result_timestamp=pred_result.result_timestamp
     )
-    task = save_task(task, next(get_session()))
+    task = save_task(task, session)
     return task
 
 
@@ -107,14 +106,20 @@ def get_prediction_histories_by_user(user_id: uuid.UUID, session: Session) -> Li
     return result
 
 
+def remove_prediction_histories_by_user(user_id: uuid.UUID, session: Session) -> int:
+    statement = delete(PredictionTask).where(PredictionTask.user_id == user_id)
+    result = session.exec(statement)
+    session.commit()
+    return result.rowcount
+
 def get_prediction_histories_by_model(model_id: uuid.UUID, session: Session) -> List[PredictionTask]:
     statement = select(PredictionTask) \
         .where(PredictionTask.model_id == model_id) \
-        .order_by(PredictionTask.timestamp.desc())
+        .order_by(PredictionTask.request_timestamp.desc())
 
     result = session.exec(statement).all()
     return result
 
 
 def validate_input(inference_input: str) -> bool:
-    return inference_input and len(inference_input) > 5
+    return inference_input is not None and len(inference_input) > 5

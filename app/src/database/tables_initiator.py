@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Session
 
-from database.database import engine
+from database.database import get_engine
 
 import uuid
 
@@ -45,8 +45,8 @@ def create_default_model(session: Session):
 
 
 def init_db():
-    SQLModel.metadata.drop_all(engine)
-    SQLModel.metadata.create_all(engine)
-    with Session(engine) as session:
+    SQLModel.metadata.drop_all(get_engine())
+    SQLModel.metadata.create_all(get_engine())
+    with Session(get_engine()) as session:
         create_admin_user(session)
         create_default_model(session)

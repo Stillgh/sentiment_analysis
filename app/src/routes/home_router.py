@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi import APIRouter, Depends
 from jwt import InvalidTokenError
 from sqlmodel import Session
@@ -10,14 +12,15 @@ from database.database import get_session
 from entities.auth.auth_entities import TokenData
 from service.auth.auth_service import authenticate_cookie, get_current_active_user
 
-settings = get_auth_settings()
 home_router = APIRouter(tags=["Home"])
-templates = Jinja2Templates(directory="src/templates")
+BASE_DIR = Path(__file__).resolve().parent.parent
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
 @home_router.get('/', response_class=HTMLResponse)
 async def index(request: Request):
-    token = request.cookies.get(settings.COOKIE_NAME)
+    auth_settings = get_auth_settings()
+    token = request.cookies.get(auth_settings.COOKIE_NAME)
     try:
         if token:
             user = await authenticate_cookie(token)
@@ -55,6 +58,7 @@ async def home_page(
 
 @home_router.get("/logout", response_class=HTMLResponse)
 async def login_get():
+    auth_settings = get_auth_settings()
     response = RedirectResponse(url="/")
-    response.delete_cookie(settings.COOKIE_NAME)
+    response.delete_cookie(auth_settings.COOKIE_NAME)
     return response

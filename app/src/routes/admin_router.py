@@ -5,7 +5,6 @@ from sqlmodel import Session
 from starlette.requests import Request
 from starlette.responses import HTMLResponse
 
-from config.auth_config import get_auth_settings
 from database.database import get_session
 from entities.auth.auth_entities import TokenData
 from entities.user.user_role import UserRole
@@ -15,7 +14,6 @@ from service.crud.user_service import get_all_users
 from service.mappers.user_mapper import user_to_user_dto
 
 admin_router = APIRouter(prefix="/admin", tags=["Admin"])
-auth_config = get_auth_settings()
 
 
 @admin_router.get("/", response_class=HTMLResponse)

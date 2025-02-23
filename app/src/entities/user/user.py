@@ -1,5 +1,4 @@
 import uuid
-from typing import Union
 
 from pydantic import BaseModel, EmailStr
 from sqlmodel import SQLModel, Field
@@ -8,13 +7,13 @@ from entities.user.user_role import UserRole
 
 
 class User(SQLModel, table=True):
-    id: uuid.UUID = Field(default=None, primary_key=True)
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     email: str = Field(unique=True, index=True)
     name: str
     surname: str
     hashed_password: str
     balance: float = Field(default=0.0)
-    role: UserRole = Field(default='user')
+    role: UserRole = Field(default='USER')
     disabled: bool = Field(default=False)
 
 

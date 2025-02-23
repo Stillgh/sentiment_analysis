@@ -11,8 +11,6 @@ from starlette.requests import Request
 
 from config.auth_config import get_auth_settings
 
-settings = get_auth_settings()
-
 
 class Token(BaseModel):
     access_token: str
@@ -55,7 +53,8 @@ class OAuth2PasswordBearerWithCookie(OAuth2):
         # IMPORTANT: this is the line that differs from FastAPI. Here we use
         # `request.cookies.get(settings.COOKIE_NAME)` instead of
         # `request.headers.get("Authorization")`
-        authorization: str = request.cookies.get(settings.COOKIE_NAME)
+        auth_settings = get_auth_settings()
+        authorization: str = request.cookies.get(auth_settings.COOKIE_NAME)
         scheme, param = get_authorization_scheme_param(authorization)
         if not authorization or scheme.lower() != "bearer":
             if self.auto_error:
