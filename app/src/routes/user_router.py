@@ -27,7 +27,7 @@ user_router = APIRouter(prefix="/users", tags=["User"])
 
 
 @user_router.post("/login")
-async def login_for_access_token(
+async def login(
         user_login: OAuth2PasswordRequestForm = Depends(),
         session: Session = Depends(get_session)
 ) -> RedirectResponse:

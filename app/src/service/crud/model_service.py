@@ -4,6 +4,7 @@ from typing import List
 
 from sqlmodel import Session, select, delete
 
+from config.constants import DEFAULT_MODEL_NAME
 from entities.ml_model.inference_input import InferenceInput
 from entities.task.prediction_request import PredictionRequest
 from entities.task.prediction_result import PredictionResult
@@ -33,11 +34,11 @@ def get_model_by_id(id: uuid, session: Session) -> ClassificationModel:
 
 
 def create_and_save_default_model():
-    return ClassificationModel(name='multisent', model_type='classification', prediction_cost=100.0)
+    return ClassificationModel(name=DEFAULT_MODEL_NAME, model_type='classification', prediction_cost=100.0)
 
 
 def get_default_model(session: Session):
-    return get_model_by_name('multisent', session)
+    return get_model_by_name(DEFAULT_MODEL_NAME, session)
 
 
 def get_model_by_name(name: str, session: Session) -> ClassificationModel:

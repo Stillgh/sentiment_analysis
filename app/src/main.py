@@ -27,7 +27,7 @@ app.include_router(home_router)
 app.include_router(prediction_router)
 app.include_router(admin_router)
 
-ALLOWED_PATHS = ["/", "/login", "/signup", "/users/signup", "/users/login"]
+ALLOWED_PATHS = ["/", "/docs", "/openapi.json", "/users/token", "/login", "/signup", "/users/signup", "/users/login"]
 
 
 @app.middleware("http")
@@ -57,7 +57,7 @@ def on_startup():
     load_dotenv()
     init_db()
     model_loader = ModelLoader()
-    model_loader.load_default_from_hugging_face()
+    model_loader.get_model()
     tg_bot.setup()
     bot_thread = threading.Thread(target=tg_bot.start_polling, daemon=True)
     bot_thread.start()

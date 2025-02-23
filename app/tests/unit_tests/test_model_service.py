@@ -19,6 +19,7 @@ from app.src.service.crud.model_service import (
     get_prediction_histories_by_model,
     validate_input,
 )
+from config.constants import DEFAULT_MODEL_NAME
 
 from entities.ml_model.classification_model import ClassificationModel
 from entities.ml_model.inference_input import InferenceInput
@@ -50,26 +51,26 @@ def test_create_model(session: Session):
 
 def test_create_and_get_default_model(session: Session):
     default_model = create_and_save_default_model()
-    assert default_model.name == "multisent"
+    assert default_model.name == DEFAULT_MODEL_NAME
     assert default_model.model_type == "classification"
     assert default_model.prediction_cost == 100.0
 
     create_model(default_model, session)
     fetched = get_default_model(session)
     assert fetched is not None
-    assert fetched.name == "multisent"
+    assert fetched.name == DEFAULT_MODEL_NAME
 
 
 def test_get_model_by_name(session: Session):
-    if not get_model_by_name("multisent", session):
-        model = ClassificationModel(name="multisent", model_type="classification", prediction_cost=75.0)
+    if not get_model_by_name(DEFAULT_MODEL_NAME, session):
+        model = ClassificationModel(name=DEFAULT_MODEL_NAME, model_type="classification", prediction_cost=75.0)
         create_model(model, session)
-    fetched = get_model_by_name("multisent", session)
+    fetched = get_model_by_name(DEFAULT_MODEL_NAME, session)
     assert fetched is not None
 
 
 def test_make_prediction():
-    model = ClassificationModel(name="multisent", model_type="classification", prediction_cost=0.0)
+    model = ClassificationModel(name=DEFAULT_MODEL_NAME, model_type="classification", prediction_cost=0.0)
     m, tokenizer = model_loader.get_model(model.name)
     model.set_resources(m, tokenizer)
     long_input = InferenceInput(data="This is a sufficiently long input")

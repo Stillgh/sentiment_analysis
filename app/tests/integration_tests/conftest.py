@@ -5,6 +5,7 @@ from starlette.testclient import TestClient
 
 from celery_worker import celery
 from config.auth_config import get_auth_settings
+from config.constants import DEFAULT_MODEL_NAME
 from entities.user.user import UserSignUp
 from entities.user.user_role import UserRole
 from main import app
@@ -124,7 +125,7 @@ def admin_client(admin_token, monkeypatch):
 @pytest.fixture(autouse=True, scope="session")
 def create_default_model():
     with Session(test_engine) as session:
-        if not get_model_by_name("multisent", session):
+        if not get_model_by_name(DEFAULT_MODEL_NAME, session):
             model = create_and_save_default_model()
             session.add(model)
             session.commit()
