@@ -25,6 +25,16 @@ from entities.ml_model.inference_input import InferenceInput
 from entities.task.prediction_request import PredictionRequest
 from entities.task.prediction_task import PredictionTask
 from entities.user.user import User
+from service.loaders.model_loader import ModelLoader
+
+model_loader = ModelLoader()
+sentiment_map = {
+    0: "Very Negative",
+    1: "Negative",
+    2: "Neutral",
+    3: "Positive",
+    4: "Very Positive"
+}
 
 
 def test_create_model(session: Session):
@@ -40,33 +50,31 @@ def test_create_model(session: Session):
 
 def test_create_and_get_default_model(session: Session):
     default_model = create_and_save_default_model()
-    assert default_model.name == "LogisticRegression"
+    assert default_model.name == "multisent"
     assert default_model.model_type == "classification"
     assert default_model.prediction_cost == 100.0
 
     create_model(default_model, session)
     fetched = get_default_model(session)
     assert fetched is not None
-    assert fetched.name == "LogisticRegression"
+    assert fetched.name == "multisent"
 
 
 def test_get_model_by_name(session: Session):
-    model = ClassificationModel(name="MyModel", model_type="classification", prediction_cost=75.0)
-    create_model(model, session)
-    fetched = get_model_by_name("MyModel", session)
+    if not get_model_by_name("multisent", session):
+        model = ClassificationModel(name="multisent", model_type="classification", prediction_cost=75.0)
+        create_model(model, session)
+    fetched = get_model_by_name("multisent", session)
     assert fetched is not None
-    assert fetched.id == model.id
 
 
 def test_make_prediction():
-    model = ClassificationModel(name="Dummy", model_type="classification", prediction_cost=0.0)
+    model = ClassificationModel(name="multisent", model_type="classification", prediction_cost=0.0)
+    m, tokenizer = model_loader.get_model(model.name)
+    model.set_resources(m, tokenizer)
     long_input = InferenceInput(data="This is a sufficiently long input")
     result_long = make_prediction(model, long_input)
-    assert result_long == "positive"
-
-    short_input = InferenceInput(data="short")
-    result_short = make_prediction(model, short_input)
-    assert result_short == "neutral"
+    assert result_long in sentiment_map.values()
 
 
 def test_save_task(session: Session):
@@ -100,7 +108,6 @@ def test_prepare_and_save_task(session: Session):
         user_balance_before_task=200.0,
         request_timestamp=now
     )
-
 
     task_id = uuid.uuid4()
     result_str = "positive"

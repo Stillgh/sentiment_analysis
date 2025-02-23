@@ -11,6 +11,9 @@ from entities.task.prediction_task import PredictionTask
 from entities.ml_model.ml_model import MLModel
 
 from entities.ml_model.classification_model import ClassificationModel
+from service.loaders.model_loader import ModelLoader
+
+model_loader = ModelLoader()
 
 
 def create_model(new_model: ClassificationModel, session: Session) -> None:
@@ -30,11 +33,11 @@ def get_model_by_id(id: uuid, session: Session) -> ClassificationModel:
 
 
 def create_and_save_default_model():
-    return ClassificationModel(name='LogisticRegression', model_type='classification', prediction_cost=100.0)
+    return ClassificationModel(name='multisent', model_type='classification', prediction_cost=100.0)
 
 
 def get_default_model(session: Session):
-    return get_model_by_name('LogisticRegression', session)
+    return get_model_by_name('multisent', session)
 
 
 def get_model_by_name(name: str, session: Session) -> ClassificationModel:
@@ -42,12 +45,15 @@ def get_model_by_name(name: str, session: Session) -> ClassificationModel:
         .where(ClassificationModel.name == name)
 
     result = session.exec(statement).first()
+    if result:
+        model, tokenizer = model_loader.get_model(name)
+        result.set_resources(model, tokenizer)
     return result
 
 
 def make_prediction(model: ClassificationModel, inference_input: InferenceInput) -> str:
-    return "positive" if len(inference_input.data) > 10 else "neutral"
-    # return model.predict(inference_input)
+    res = model.predict(inference_input)
+    return res[0]
 
 
 def prepare_and_save_task(request: PredictionRequest, result: str, is_success: bool, cost: float,
@@ -111,6 +117,7 @@ def remove_prediction_histories_by_user(user_id: uuid.UUID, session: Session) ->
     result = session.exec(statement)
     session.commit()
     return result.rowcount
+
 
 def get_prediction_histories_by_model(model_id: uuid.UUID, session: Session) -> List[PredictionTask]:
     statement = select(PredictionTask) \

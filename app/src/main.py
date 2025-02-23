@@ -16,6 +16,7 @@ from routes.user_router import user_router
 from routes.home_router import home_router
 from service.auth.auth_service import get_current_active_user
 from service.auth.jwt_service import verify_token
+from service.loaders.model_loader import ModelLoader
 from tg_api.tg_api import TgBot
 
 app = FastAPI()
@@ -55,6 +56,8 @@ async def restrict_access_middleware(request: Request, call_next):
 def on_startup():
     load_dotenv()
     init_db()
+    model_loader = ModelLoader()
+    model_loader.load_default_from_hugging_face()
     tg_bot.setup()
     bot_thread = threading.Thread(target=tg_bot.start_polling, daemon=True)
     bot_thread.start()

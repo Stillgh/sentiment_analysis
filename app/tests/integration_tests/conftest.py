@@ -124,7 +124,7 @@ def admin_client(admin_token, monkeypatch):
 @pytest.fixture(autouse=True, scope="session")
 def create_default_model():
     with Session(test_engine) as session:
-        if not get_model_by_name("LogisticRegression", session):
+        if not get_model_by_name("multisent", session):
             model = create_and_save_default_model()
             session.add(model)
             session.commit()
