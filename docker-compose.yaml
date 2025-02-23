@@ -16,7 +16,7 @@ services:
     build: ./app/
     working_dir: /app/src
     image: ml-service-app:0.1
-    command: celery -A celery_worker.celery worker --loglevel=info --logfile=logs/celery.log -Q prediction
+    command: celery -A celery_worker.celery worker --loglevel=info --logfile=../logs/celery.log -Q prediction
     env_file:
       - ./app/.env
     volumes:

@@ -1,5 +1,5 @@
+import logging
 import uuid
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Annotated
 
@@ -16,34 +16,49 @@ from entities.task.prediction_request import PredictionRequest
 from entities.task.prediction_task import PredictionDTO
 from routes.home_router import templates
 from service.auth.auth_service import get_current_active_user, authenticate_cookie
-from service.crud.model_service import get_model_by_name, get_default_model, validate_input, \
-    get_prediction_task_by_id, get_model_by_id, get_prediction_histories_by_user
+from service.crud.model_service import (
+    get_model_by_name,
+    get_default_model,
+    validate_input,
+    get_prediction_task_by_id,
+    get_model_by_id,
+    get_prediction_histories_by_user
+)
 from service.mappers.prediction_mapper import prediction_task_to_dto
 
 prediction_router = APIRouter(prefix="/prediction", tags=["Prediction"])
-custom_executor = ThreadPoolExecutor(max_workers=20)
+logger = logging.getLogger(__name__)
 
 
 @prediction_router.post("/predict")
 async def create_prediction(
-        token: Annotated[TokenData, Depends(authenticate_cookie)],
-        session: Session = Depends(get_session),
-        inference_input: str = Body(..., embed=True),
-        model_name: str = Body(..., embed=True),
-
+    token: Annotated[TokenData, Depends(authenticate_cookie)],
+    session: Session = Depends(get_session),
+    inference_input: str = Body(..., embed=True),
+    model_name: str = Body(..., embed=True),
 ):
+    logger.info(f"Received prediction request, inference_input_length: {len(inference_input)}")
+
     if not validate_input(inference_input):
+        logger.warning(f"Invalid input length for prediction, inference_input_length: {len(inference_input)}")
         raise HTTPException(status_code=400, detail="Input len should be > 5")
+
     model = get_model_by_name(model_name, session) if model_name else get_default_model(session)
     if not model:
         model = get_default_model(session)
+
     user = await get_current_active_user(token, session)
+    logger.info(f"User authenticated, user_id: {user.id}")
 
     if user.balance < model.prediction_cost:
+        logger.warning(
+            f"Insufficient balance for prediction, user_id: {user.id}, required: {model.prediction_cost}, available: {user.balance}"
+        )
         raise HTTPException(
             status_code=400,
             detail=f"Insufficient balance. Required: {model.prediction_cost}, Available: {user.balance}"
         )
+
     prediction_request = PredictionRequest(
         user_id=user.id,
         model_id=model.id,
@@ -51,42 +66,55 @@ async def create_prediction(
         user_balance_before_task=user.balance,
         request_timestamp=datetime.now()
     )
+
     task_id = uuid.uuid4()
+
     try:
         perform_prediction.apply_async(
             args=[prediction_request.dict(), task_id, model.name],
             task_id=str(task_id),
             queue="prediction"
         )
+        logger.info(f"Celery task dispatched, task_id: {task_id}, user_id: {user.id}")
     except Exception as exc:
+        logger.error(f"Failed to dispatch Celery task, error: {exc}")
         raise HTTPException(status_code=500, detail=f"Task error: {exc}")
+
     return {"task_id": task_id}
 
 
 @prediction_router.post("/prediction_result", response_model=PredictionDTO)
 async def get_prediction(
-        token: Annotated[TokenData, Depends(authenticate_cookie)],
-        session: Session = Depends(get_session),
-        task_id: uuid.UUID = Body(..., embed=True)
+    token: Annotated[TokenData, Depends(authenticate_cookie)],
+    session: Session = Depends(get_session),
+    task_id: uuid.UUID = Body(..., embed=True)
 ):
+    logger.info(f"Fetching prediction result, task_id: {task_id}")
     user = await get_current_active_user(token, session)
     task = get_prediction_task_by_id(task_id, session)
+
     if not task:
+        logger.info(f"Prediction task is still processing, task_id: {task_id}")
         return JSONResponse(
             status_code=status.HTTP_202_ACCEPTED,
             content={"detail": "Prediction task is still processing. Please try again later."}
         )
-    return prediction_task_to_dto(task, user.email, get_model_by_id(task.model_id, session).name)
+
+    logger.info(f"Prediction task found, task_id: {task_id}, user_id: {user.id}")
+    model = get_model_by_id(task.model_id, session)
+    return prediction_task_to_dto(task, user.email, model.name if model else "unknown")
 
 
 @prediction_router.get("/history", response_class=HTMLResponse)
 async def show_prediction_history(
-        request: Request,
-        token: Annotated[TokenData, Depends(authenticate_cookie)],
-        session: Session = Depends(get_session)
+    request: Request,
+    token: Annotated[TokenData, Depends(authenticate_cookie)],
+    session: Session = Depends(get_session)
 ):
     user = await get_current_active_user(token, session)
+    logger.info(f"Fetching prediction history for user, user_id: {user.id}")
     predictions = get_prediction_histories_by_user(user.id, session)
+    logger.info(f"Prediction history fetched, user_id: {user.id}, count: {len(predictions)}")
     prediction_dtos = [
         prediction_task_to_dto(task, user.email, get_model_by_id(task.model_id, session).name)
         for task in predictions

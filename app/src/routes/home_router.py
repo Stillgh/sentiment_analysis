@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 from fastapi import APIRouter, Depends
@@ -15,6 +16,7 @@ from service.auth.auth_service import authenticate_cookie, get_current_active_us
 home_router = APIRouter(tags=["Home"])
 BASE_DIR = Path(__file__).resolve().parent.parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+logger = logging.getLogger(__name__)
 
 
 @home_router.get('/', response_class=HTMLResponse)
@@ -52,6 +54,7 @@ async def home_page(
         token: TokenData = Depends(authenticate_cookie),
         session: Session = Depends(get_session)
 ):
+    logger.info(f"Handling root endpoint {request.state.request_id}")
     user = await get_current_active_user(token, session)
     return templates.TemplateResponse("home.html", {"request": request, "user": user})
 
