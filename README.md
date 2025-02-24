@@ -10,5 +10,3 @@
 Главная страница приложения localhost/home
 
 Добавлен телеграм-бот @my_ml_service_bot
-
-create logs folder inside app
