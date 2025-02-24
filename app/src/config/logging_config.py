@@ -1,5 +1,12 @@
 import logging.config
 
+import os
+import logging.config
+if os.getenv('TESTING'):
+    log_file = 'tests.log'
+else:
+    log_file = '/app/logs/app.log'
+
 LOGGING_CONFIG = {
     'version': 1,
     'disable_existing_loggers': False,  # Preserve existing loggers
@@ -15,7 +22,7 @@ LOGGING_CONFIG = {
     'handlers': {
         'file': {
             'class': 'logging.FileHandler',
-            'filename': '/app/logs/app.log',       # Log file location
+            'filename': log_file,       # Log file location
             'mode': 'a',                 # Append mode
             'formatter': 'standard',
         },

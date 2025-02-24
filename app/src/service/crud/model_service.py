@@ -90,6 +90,7 @@ def prepare_and_save_task(request: PredictionRequest, result: str, is_success: b
         id=task_id,
         user_id=request.user_id,
         model_id=request.model_id,
+        user_email=request.user_email,
         inference_input=request.inference_input,
         user_balance_before_task=request.user_balance_before_task,
         request_timestamp=request.request_timestamp,
@@ -110,7 +111,7 @@ def save_task(task: PredictionTask, session: Session) -> PredictionTask:
         session.commit()
         session.refresh(task)
     except Exception as e:
-        logger.erro(f"Error creating prediction task with id {task.id}: {e}")
+        logger.error(f"Error creating prediction task with id {task.id}: {e}")
         session.rollback()
     return task
 
@@ -124,6 +125,14 @@ def get_prediction_task_by_id(task_id: uuid, session: Session) -> PredictionTask
     logger.info(f"Getting prediction task by id {task_id}")
     statement = select(PredictionTask).where(PredictionTask.id == task_id)
     result = session.exec(statement).first()
+    return result
+
+
+def get_all_prediction_histories(session: Session) -> List[PredictionTask]:
+    statement = select(PredictionTask) \
+        .order_by(PredictionTask.request_timestamp.desc())
+
+    result = session.exec(statement).all()
     return result
 
 

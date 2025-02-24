@@ -21,12 +21,12 @@ from entities.auth.auth_entities import TokenData
 from entities.user.user import User
 from entities.user.balance_history import BalanceHistory
 
-os.environ["COOKIE_NAME"] = "user_token"
-os.environ["SECRET_KEY"] = '703d9589a9a161cecfce6fd1d3fd6d69293eefaeebc1e5244f49928f690aa189'
-os.environ["ALGORITHM"] = 'HS256'
-os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"] = '30'
-os.environ["CELERY_BROKER_URL"] = "memory://"
-os.environ["CELERY_RESULT_BACKEND"] = "cache+memory://"
+# os.environ["COOKIE_NAME"] = "user_token"
+# os.environ["SECRET_KEY"] = '703d9589a9a161cecfce6fd1d3fd6d69293eefaeebc1e5244f49928f690aa189'
+# os.environ["ALGORITHM"] = 'HS256'
+# os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"] = '30'
+# os.environ["CELERY_BROKER_URL"] = "memory://"
+# os.environ["CELERY_RESULT_BACKEND"] = "cache+memory://"
 
 test_engine = create_engine(
     "sqlite:///:memory:",

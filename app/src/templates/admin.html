@@ -4,7 +4,7 @@
 
 {% block content %}
   <h2>Dashboard</h2>
-  <p>Welcome! On that site you can check the sentiment of a text</p>
+  <p>Welcome, admin! On that site you can check the sentiment of a text</p>
 
   <!-- Navigation Links -->
   <div class="nav-links">
@@ -31,6 +31,12 @@
       </form>
     </div>
   </div>
+
+  <div class="panel-item">
+    <button class="btn action-btn" onclick="showPredictionHistory()">Prediction History</button>
+  </div>
+
+
 
   <div class="nav-links">
     <a href="/home" class="btn">Return Home</a>
@@ -152,6 +158,10 @@
       document.getElementById('modalMessage').innerText = message;
       const modal = document.getElementById('resultModal');
       modal.style.display = "block";
+    }
+
+    function showPredictionHistory() {
+      window.location.href = "/admin/prediction_history_all";
     }
 
     // Close modal when clicking on the "x" or "OK" button.

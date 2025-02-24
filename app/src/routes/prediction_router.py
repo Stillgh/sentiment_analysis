@@ -36,10 +36,10 @@ logger = logging.getLogger(__name__)
 
 @prediction_router.post("/predict")
 async def create_prediction(
-    token: Annotated[TokenData, Depends(authenticate_cookie)],
-    session: Session = Depends(get_session),
-    inference_input: str = Body(..., embed=True),
-    model_name: str = Body(..., embed=True),
+        token: Annotated[TokenData, Depends(authenticate_cookie)],
+        session: Session = Depends(get_session),
+        inference_input: str = Body(..., embed=True),
+        model_name: str = Body(..., embed=True),
 ):
     start_time = time.time()
     PREDICT_REQUEST_COUNT.inc()
@@ -72,6 +72,7 @@ async def create_prediction(
     prediction_request = PredictionRequest(
         user_id=user.id,
         model_id=model.id,
+        user_email=user.email,
         inference_input=inference_input,
         user_balance_before_task=user.balance,
         request_timestamp=datetime.now()
@@ -99,9 +100,9 @@ async def create_prediction(
 
 @prediction_router.post("/prediction_result", response_model=PredictionDTO)
 async def get_prediction(
-    token: Annotated[TokenData, Depends(authenticate_cookie)],
-    session: Session = Depends(get_session),
-    task_id: uuid.UUID = Body(..., embed=True)
+        token: Annotated[TokenData, Depends(authenticate_cookie)],
+        session: Session = Depends(get_session),
+        task_id: uuid.UUID = Body(..., embed=True)
 ):
     logger.info(f"Fetching prediction result, task_id: {task_id}")
     user = await get_current_active_user(token, session)
@@ -121,9 +122,9 @@ async def get_prediction(
 
 @prediction_router.get("/history", response_class=HTMLResponse)
 async def show_prediction_history(
-    request: Request,
-    token: Annotated[TokenData, Depends(authenticate_cookie)],
-    session: Session = Depends(get_session)
+        request: Request,
+        token: Annotated[TokenData, Depends(authenticate_cookie)],
+        session: Session = Depends(get_session)
 ):
     user = await get_current_active_user(token, session)
     logger.info(f"Fetching prediction history for user, user_id: {user.id}")

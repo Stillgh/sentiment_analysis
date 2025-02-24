@@ -27,3 +27,4 @@ kombu==5.5.0rc3
 transformers==4.49.0
 torch===2.6.0
 prometheus-client==0.21.1
+pytest-env==1.1.5

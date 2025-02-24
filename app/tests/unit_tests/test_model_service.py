@@ -82,6 +82,7 @@ def test_save_task(session: Session):
     task = PredictionTask(
         user_id=uuid.uuid4(),
         model_id=uuid.uuid4(),
+        user_email="dummy@mail.ru",
         inference_input="dummy input",
         user_balance_before_task=150.0,
         request_timestamp=datetime.now(),
@@ -105,6 +106,7 @@ def test_prepare_and_save_task(session: Session):
     request = PredictionRequest(
         user_id=user_id,
         model_id=model_id,
+        user_email="dummy@mail.ru",
         inference_input="dummy input",
         user_balance_before_task=200.0,
         request_timestamp=now
@@ -129,6 +131,7 @@ def test_get_all_prediction_history(session: Session):
     task1 = PredictionTask(
         user_id=uuid.uuid4(),
         model_id=uuid.uuid4(),
+        user_email="dummy@mail.ru",
         inference_input="input1",
         user_balance_before_task=100.0,
         request_timestamp=datetime.now(),
@@ -140,6 +143,7 @@ def test_get_all_prediction_history(session: Session):
     task2 = PredictionTask(
         user_id=uuid.uuid4(),
         model_id=uuid.uuid4(),
+        user_email="dummy@mail.ru",
         inference_input="input2",
         user_balance_before_task=200.0,
         request_timestamp=datetime.now(),
@@ -159,6 +163,7 @@ def test_get_prediction_task_by_id(session: Session):
     task = PredictionTask(
         user_id=uuid.uuid4(),
         model_id=uuid.uuid4(),
+        user_email="dummy@mail.ru",
         inference_input="input",
         user_balance_before_task=120.0,
         request_timestamp=datetime.now(),
@@ -178,6 +183,7 @@ def test_get_prediction_histories_by_user(session: Session):
     task1 = PredictionTask(
         user_id=user_id,
         model_id=uuid.uuid4(),
+        user_email="dummy@mail.ru",
         inference_input="user input 1",
         user_balance_before_task=100.0,
         request_timestamp=datetime(2023, 1, 2, 12, 0, 0),
@@ -189,6 +195,7 @@ def test_get_prediction_histories_by_user(session: Session):
     task2 = PredictionTask(
         user_id=user_id,
         model_id=uuid.uuid4(),
+        user_email="dummy@mail.ru",
         inference_input="user input 2",
         user_balance_before_task=110.0,
         request_timestamp=datetime(2023, 1, 1, 12, 0, 0),
@@ -211,6 +218,7 @@ def test_get_prediction_histories_by_model(session: Session):
     task1 = PredictionTask(
         user_id=uuid.uuid4(),
         model_id=model_id,
+        user_email="dummy@mail.ru",
         inference_input="model input 1",
         user_balance_before_task=90.0,
         request_timestamp=datetime.now(),
@@ -222,6 +230,7 @@ def test_get_prediction_histories_by_model(session: Session):
     task2 = PredictionTask(
         user_id=uuid.uuid4(),
         model_id=model_id,
+        user_email="dummy@mail.ru",
         inference_input="model input 2",
         user_balance_before_task=95.0,
         request_timestamp=datetime.now(),

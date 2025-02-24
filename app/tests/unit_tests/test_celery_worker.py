@@ -46,6 +46,7 @@ def test_perform_prediction_success(monkeypatch):
         "inference_input": "dummy data",
         "user_id": uuid.uuid4(),
         "model_id": uuid.uuid4(),
+        "user_email": "dummy@mail.ru",
         "user_balance_before_task": 500.0,
         "request_timestamp": datetime.now()
     }
@@ -97,6 +98,7 @@ def test_perform_prediction_failure(monkeypatch):
         "inference_input": "dummy data",
         "user_id": uuid.uuid4(),
         "model_id": uuid.uuid4(),
+        "user_email": "dummy@mail.ru",
         "user_balance_before_task": 500.0,
         "request_timestamp": datetime.now()
     }

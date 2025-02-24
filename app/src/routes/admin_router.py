@@ -11,7 +11,9 @@ from entities.auth.auth_entities import TokenData
 from entities.user.user_role import UserRole
 from routes.home_router import templates
 from service.auth.auth_service import authenticate_cookie, get_current_active_user
+from service.crud.model_service import get_model_by_id, get_all_prediction_histories
 from service.crud.user_service import get_all_users, add_balance
+from service.mappers.prediction_mapper import prediction_task_to_dto
 from service.mappers.user_mapper import user_to_user_dto
 
 admin_router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -84,3 +86,19 @@ async def admin_add_balance(
         return HTMLResponse(f"Error: {str(e)}", status_code=400)
 
     return HTMLResponse(f"Successfully added {amount} to {email}", status_code=200)
+
+
+@admin_router.get("/prediction_history_all", response_class=HTMLResponse)
+async def show_prediction_history(
+    request: Request,
+    token: Annotated[TokenData, Depends(authenticate_cookie)],
+    session: Session = Depends(get_session)
+):
+    logger.info(f"Fetching prediction history for all users")
+    predictions = get_all_prediction_histories(session)
+    logger.info(f"Prediction history fetched, count: {len(predictions)}")
+    prediction_dtos = [
+        prediction_task_to_dto(task, task.user_email, get_model_by_id(task.model_id, session).name)
+        for task in predictions
+    ]
+    return templates.TemplateResponse("prediction_history.html", {"request": request, "predictions": prediction_dtos})
