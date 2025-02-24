@@ -7,8 +7,6 @@ stages:
 
 setup-env:
   stage: setup
-  dependencies:
-    - setup-env
   script:
     - python -m venv venv
     - . venv/bin/activate
@@ -27,17 +25,18 @@ unit-tests:
   script:
     - . venv/bin/activate
     - pytest ./app/tests/unit_tests
+  needs:
+    - setup-env
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event' && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == 'master'
 
 integration-tests:
   stage: integration
-  dependencies:
-    - setup-env
   script:
     - . venv/bin/activate
     - pytest ./app/tests/integration_tests
   needs:
+    - setup-env
     - unit-tests
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event' && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == 'master'
