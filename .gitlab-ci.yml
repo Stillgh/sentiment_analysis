@@ -25,6 +25,7 @@ setup-env:
 unit-tests:
   stage: unit
   script:
+    - . venv/bin/activate
     - pytest ./app/tests/unit_tests
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event' && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == 'master'
@@ -34,6 +35,7 @@ integration-tests:
   dependencies:
     - setup-env
   script:
+    - . venv/bin/activate
     - pytest ./app/tests/integration_tests
   needs:
     - unit-tests
