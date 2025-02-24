@@ -1,4 +1,5 @@
 import logging
+import time
 import uuid
 from datetime import datetime
 from typing import Annotated
@@ -10,6 +11,9 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse
 
 from celery_worker import perform_prediction
+from config.metrics import PREDICT_REQUEST_COUNT, PREDICT_SUCCESS_REQUEST_LATENCY, \
+    FAILED_PREDICTION_REQUEST_COUNT, PREDICT_FAILED_REQUEST_LATENCY, \
+    record_duration
 from database.database import get_session
 from entities.auth.auth_entities import TokenData
 from entities.task.prediction_request import PredictionRequest
@@ -37,9 +41,13 @@ async def create_prediction(
     inference_input: str = Body(..., embed=True),
     model_name: str = Body(..., embed=True),
 ):
+    start_time = time.time()
+    PREDICT_REQUEST_COUNT.inc()
     logger.info(f"Received prediction request, inference_input_length: {len(inference_input)}")
 
     if not validate_input(inference_input):
+        FAILED_PREDICTION_REQUEST_COUNT.inc()
+        record_duration(PREDICT_FAILED_REQUEST_LATENCY, start_time)
         logger.warning(f"Invalid input length for prediction, inference_input_length: {len(inference_input)}")
         raise HTTPException(status_code=400, detail="Input len should be > 5")
 
@@ -54,6 +62,8 @@ async def create_prediction(
         logger.warning(
             f"Insufficient balance for prediction, user_id: {user.id}, required: {model.prediction_cost}, available: {user.balance}"
         )
+        FAILED_PREDICTION_REQUEST_COUNT.inc()
+        record_duration(PREDICT_FAILED_REQUEST_LATENCY, start_time)
         raise HTTPException(
             status_code=400,
             detail=f"Insufficient balance. Required: {model.prediction_cost}, Available: {user.balance}"
@@ -77,8 +87,12 @@ async def create_prediction(
         )
         logger.info(f"Celery task dispatched, task_id: {task_id}, user_id: {user.id}")
     except Exception as exc:
+        FAILED_PREDICTION_REQUEST_COUNT.inc()
+        record_duration(PREDICT_FAILED_REQUEST_LATENCY, start_time)
         logger.error(f"Failed to dispatch Celery task, error: {exc}")
         raise HTTPException(status_code=500, detail=f"Task error: {exc}")
+
+    record_duration(PREDICT_SUCCESS_REQUEST_LATENCY, start_time)
 
     return {"task_id": task_id}
 

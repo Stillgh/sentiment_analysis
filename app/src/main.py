@@ -32,7 +32,7 @@ app.include_router(prediction_router)
 app.include_router(admin_router)
 logger = logging.getLogger(__name__)
 
-ALLOWED_PATHS = ["/", "/docs", "/openapi.json", "/users/token", "/login", "/signup", "/users/signup", "/users/login"]
+ALLOWED_PATHS = ["/", "/metrics", "/health", "/docs", "/openapi.json", "/users/token", "/login", "/signup", "/users/signup", "/users/login"]
 
 
 @app.middleware("http")

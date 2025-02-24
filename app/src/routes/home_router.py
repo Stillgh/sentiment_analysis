@@ -1,11 +1,13 @@
 import logging
+import time
 from pathlib import Path
 
 from fastapi import APIRouter, Depends
 from jwt import InvalidTokenError
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from sqlmodel import Session
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, RedirectResponse
+from starlette.responses import HTMLResponse, RedirectResponse, Response
 from starlette.templating import Jinja2Templates
 
 from config.auth_config import get_auth_settings
@@ -65,3 +67,13 @@ async def login_get():
     response = RedirectResponse(url="/")
     response.delete_cookie(auth_settings.COOKIE_NAME)
     return response
+
+
+@home_router.get("/metrics")
+async def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
+@home_router.get("/health")
+async def health():
+    return {"status": "ok", "timestamp": time.time()}
