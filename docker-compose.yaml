@@ -8,6 +8,7 @@ services:
       - ./app/.env
     volumes:
       - ./app:/app
+      - app_logs:/app/logs
     depends_on:
       db:
         condition: service_healthy
@@ -21,6 +22,7 @@ services:
       - ./app/.env
     volumes:
       - ./app:/app
+      - app_logs:/app/logs
     depends_on:
       - app
       - rabbitmq
@@ -89,3 +91,4 @@ volumes:
   rabbitmq_volume:
   grafana_data:
   prometheus_data:
+  app_logs:
