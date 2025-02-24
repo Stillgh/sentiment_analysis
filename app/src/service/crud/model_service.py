@@ -1,9 +1,11 @@
+import logging
 from datetime import datetime
 import uuid
 from typing import List
 
 from sqlmodel import Session, select, delete
 
+from config.constants import DEFAULT_MODEL_NAME
 from entities.ml_model.inference_input import InferenceInput
 from entities.task.prediction_request import PredictionRequest
 from entities.task.prediction_result import PredictionResult
@@ -11,47 +13,72 @@ from entities.task.prediction_task import PredictionTask
 from entities.ml_model.ml_model import MLModel
 
 from entities.ml_model.classification_model import ClassificationModel
+from service.loaders.model_loader import ModelLoader
+
+model_loader = ModelLoader()
+logger = logging.getLogger(__name__)
 
 
 def create_model(new_model: ClassificationModel, session: Session) -> None:
+    logger.info(f"Creating {new_model.name} model in database")
     session.add(new_model)
     session.commit()
     session.refresh(new_model)
+    logger.info(f"{new_model.name} model was created")
 
 
 def get_all_models(session: Session) -> List[MLModel]:
+    logger.info("Getting all models")
     return session.query(ClassificationModel).all()
 
 
 def get_model_by_id(id: uuid, session: Session) -> ClassificationModel:
+    logger.info(f"Getting model by id {id}")
+
     statement = select(ClassificationModel).where(ClassificationModel.id == id)
     result = session.exec(statement).first()
+    logger.info(f"Model with id {id} was fetched")
+
     return result
 
 
 def create_and_save_default_model():
-    return ClassificationModel(name='LogisticRegression', model_type='classification', prediction_cost=100.0)
+    return ClassificationModel(name=DEFAULT_MODEL_NAME, model_type='classification', prediction_cost=100.0)
 
 
 def get_default_model(session: Session):
-    return get_model_by_name('LogisticRegression', session)
+    return get_model_by_name(DEFAULT_MODEL_NAME, session)
 
 
 def get_model_by_name(name: str, session: Session) -> ClassificationModel:
+    logger.info(f"Getting {name} model from database")
+
     statement = select(ClassificationModel) \
         .where(ClassificationModel.name == name)
 
     result = session.exec(statement).first()
+    if result:
+        model, tokenizer = model_loader.get_model(name)
+        result.set_resources(model, tokenizer)
+
+    logger.info(f"{name} model was fetched from database")
+
     return result
 
 
 def make_prediction(model: ClassificationModel, inference_input: InferenceInput) -> str:
-    return "positive" if len(inference_input.data) > 10 else "neutral"
-    # return model.predict(inference_input)
+    logger.info(f"Making prediction")
+
+    res = model.predict(inference_input)
+    logger.info(f"Prediction made")
+
+    return res[0]
 
 
 def prepare_and_save_task(request: PredictionRequest, result: str, is_success: bool, cost: float,
                           task_id: uuid, session: Session) -> PredictionTask:
+    logger.info(f"Preparing and saving task {task_id}")
+
     pred_result = PredictionResult(
         result=result,
         is_success=is_success,
@@ -63,6 +90,7 @@ def prepare_and_save_task(request: PredictionRequest, result: str, is_success: b
         id=task_id,
         user_id=request.user_id,
         model_id=request.model_id,
+        user_email=request.user_email,
         inference_input=request.inference_input,
         user_balance_before_task=request.user_balance_before_task,
         request_timestamp=request.request_timestamp,
@@ -72,6 +100,8 @@ def prepare_and_save_task(request: PredictionRequest, result: str, is_success: b
         result_timestamp=pred_result.result_timestamp
     )
     task = save_task(task, session)
+    logger.info(f"Task was saved task {task.id}")
+
     return task
 
 
@@ -80,20 +110,29 @@ def save_task(task: PredictionTask, session: Session) -> PredictionTask:
         session.add(task)
         session.commit()
         session.refresh(task)
-        print("Created prediction tasks successfully!")
     except Exception as e:
-        print(f"Error creating prediction tasks: {e}")
+        logger.error(f"Error creating prediction task with id {task.id}: {e}")
         session.rollback()
     return task
 
 
 def get_all_prediction_history(session: Session) -> List[PredictionTask]:
+    logger.info("Getting all prediction history")
     return session.query(PredictionTask).all()
 
 
 def get_prediction_task_by_id(task_id: uuid, session: Session) -> PredictionTask:
+    logger.info(f"Getting prediction task by id {task_id}")
     statement = select(PredictionTask).where(PredictionTask.id == task_id)
     result = session.exec(statement).first()
+    return result
+
+
+def get_all_prediction_histories(session: Session) -> List[PredictionTask]:
+    statement = select(PredictionTask) \
+        .order_by(PredictionTask.request_timestamp.desc())
+
+    result = session.exec(statement).all()
     return result
 
 
@@ -111,6 +150,7 @@ def remove_prediction_histories_by_user(user_id: uuid.UUID, session: Session) ->
     result = session.exec(statement)
     session.commit()
     return result.rowcount
+
 
 def get_prediction_histories_by_model(model_id: uuid.UUID, session: Session) -> List[PredictionTask]:
     statement = select(PredictionTask) \

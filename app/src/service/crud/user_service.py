@@ -1,3 +1,4 @@
+import logging
 import uuid
 from typing import List
 import bcrypt
@@ -7,6 +8,8 @@ from entities.user.user import User
 from sqlmodel import Session, select
 
 from entities.user.balance_history import BalanceHistory
+
+logger = logging.getLogger(__name__)
 
 
 def get_all_users(session: Session) -> List[User]:
@@ -46,14 +49,18 @@ def add_balance(email: str, amount: float, session: Session) -> None:
 
 
 def withdraw_balance(user_id: uuid.UUID, amount: float, session: Session) -> None:
+    logger.info(f"Withdrawing {amount} from user {user_id}")
     if amount <= 0:
+        logger.error(f"Amount must be positive {amount}, user {user_id}")
         raise Exception("Amount must be positive")
 
     user = get_user_by_id(user_id, session)
     if not user:
+        logger.error(f"User {user_id} not found")
         raise HTTPException(status_code=404, detail=str("User not found"))
 
     if user.balance < amount:
+        logger.error(f"Insufissient balance: {user.balance}, amount: {amount}, user: {user_id}")
         raise HTTPException(status_code=400, detail=str("Insufficient balance"))
 
     balance_history = BalanceHistory(user_id=user.id, amount_before_change=user.balance, amount_change=-amount)
@@ -62,6 +69,7 @@ def withdraw_balance(user_id: uuid.UUID, amount: float, session: Session) -> Non
     session.add(balance_history)
     session.commit()
     session.refresh(user)
+    logger.info(f"Amount: {amount} withdrawed from user: {user_id}")
 
 
 def get_balance_histories(user_id: uuid.UUID, session: Session) -> List[BalanceHistory]:
@@ -90,5 +98,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def find_and_verify_user(email: str, password: str, session: Session) -> User:
     user = get_user_by_email(email, session)
     if not user or not verify_password(password, user.hashed_password):
+        logger.error(f"Invalid credentials for user {email}")
+
         raise HTTPException(status_code=401, detail="Invalid credentials")
     return user

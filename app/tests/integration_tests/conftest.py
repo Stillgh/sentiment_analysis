@@ -5,6 +5,7 @@ from starlette.testclient import TestClient
 
 from celery_worker import celery
 from config.auth_config import get_auth_settings
+from config.constants import DEFAULT_MODEL_NAME
 from entities.user.user import UserSignUp
 from entities.user.user_role import UserRole
 from main import app
@@ -20,12 +21,12 @@ from entities.auth.auth_entities import TokenData
 from entities.user.user import User
 from entities.user.balance_history import BalanceHistory
 
-os.environ["COOKIE_NAME"] = "user_token"
-os.environ["SECRET_KEY"] = '703d9589a9a161cecfce6fd1d3fd6d69293eefaeebc1e5244f49928f690aa189'
-os.environ["ALGORITHM"] = 'HS256'
-os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"] = '30'
-os.environ["CELERY_BROKER_URL"] = "memory://"
-os.environ["CELERY_RESULT_BACKEND"] = "cache+memory://"
+# os.environ["COOKIE_NAME"] = "user_token"
+# os.environ["SECRET_KEY"] = '703d9589a9a161cecfce6fd1d3fd6d69293eefaeebc1e5244f49928f690aa189'
+# os.environ["ALGORITHM"] = 'HS256'
+# os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"] = '30'
+# os.environ["CELERY_BROKER_URL"] = "memory://"
+# os.environ["CELERY_RESULT_BACKEND"] = "cache+memory://"
 
 test_engine = create_engine(
     "sqlite:///:memory:",
@@ -124,7 +125,7 @@ def admin_client(admin_token, monkeypatch):
 @pytest.fixture(autouse=True, scope="session")
 def create_default_model():
     with Session(test_engine) as session:
-        if not get_model_by_name("LogisticRegression", session):
+        if not get_model_by_name(DEFAULT_MODEL_NAME, session):
             model = create_and_save_default_model()
             session.add(model)
             session.commit()
